@@ -26,13 +26,11 @@
 
 -dontwarn java.lang.invoke.*
 -dontwarn **$$Lambda$*
+-dontwarn javax.annotation.**
 
 # RetroFit
 -dontwarn retrofit.**
 -keep class retrofit.** { *; }
--keepattributes Signature
--keepattributes Exceptions
--dontwarn javax.annotation.**
 
 # Glide
 -keep public class * implements com.bumptech.glide.module.GlideModule
@@ -41,25 +39,24 @@
     public *;
 }
 
--keep class !android.support.v7.internal.view.menu.**,** {*;}
+# OkHttp
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep interface com.squareup.okhttp3.** { *; }
+-dontwarn com.squareup.okhttp3.**
 
--dontwarn
--ignorewarnings
+#-dontwarn
+#-ignorewarnings
+-dontshrink
+-dontobfuscate
 
--keep public class android.support.design.widget.BottomNavigationView { *; }
--keep public class android.support.design.internal.BottomNavigationMenuView { *; }
--keep public class android.support.design.internal.BottomNavigationPresenter { *; }
--keep public class android.support.design.internal.BottomNavigationItemView { *; }
+-dontwarn org.jaudiotagger.**
+-keep class org.jaudiotagger.** { *; }
 
-#-dontwarn android.support.v8.renderscript.*
-#-keepclassmembers class android.support.v8.renderscript.RenderScript {
-#  native *** rsn*(...);
-#  native *** n*(...);
-#}
-
-#-keep class org.jaudiotagger.** { *; }
-
-
--obfuscationdictionary build/obfuscation-dictionary.txt
--classobfuscationdictionary build/class-dictionary.txt
--packageobfuscationdictionary build/package-dictionary.txt
+-keepclassmembers enum * { *; }
+-keepattributes *Annotation*, Signature, Exception
+-keepnames class androidx.navigation.fragment.NavHostFragment
+-keepnames class code.name.monkey.retromusic.model.Home
+-keep class * extends androidx.fragment.app.Fragment{}
+-keepnames class * extends android.os.Parcelable
+-keepnames class * extends java.io.Serializable

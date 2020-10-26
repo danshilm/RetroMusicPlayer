@@ -1,13 +1,30 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.adapter.song
 
-import android.app.ActivityOptions
 import android.content.res.ColorStateList
 import android.content.res.Resources
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.bundleOf
+import androidx.core.view.isVisible
+import androidx.fragment.app.FragmentActivity
+import androidx.navigation.findNavController
+import code.name.monkey.retromusic.EXTRA_ALBUM_ID
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.adapter.base.AbsMultiSelectAdapter
 import code.name.monkey.retromusic.adapter.base.MediaEntryViewHolder
@@ -19,10 +36,9 @@ import code.name.monkey.retromusic.helper.MusicPlayerRemote
 import code.name.monkey.retromusic.helper.SortOrder
 import code.name.monkey.retromusic.helper.menu.SongMenuHelper
 import code.name.monkey.retromusic.helper.menu.SongsMenuHelper
-import code.name.monkey.retromusic.interfaces.CabHolder
+import code.name.monkey.retromusic.interfaces.ICabHolder
 import code.name.monkey.retromusic.model.Song
 import code.name.monkey.retromusic.util.MusicUtil
-import code.name.monkey.retromusic.util.NavigationUtil
 import code.name.monkey.retromusic.util.PreferenceUtil
 import code.name.monkey.retromusic.util.color.MediaNotificationProcessor
 import com.afollestad.materialcab.MaterialCab
@@ -34,14 +50,14 @@ import me.zhanghai.android.fastscroll.PopupTextProvider
  */
 
 open class SongAdapter(
-    protected val activity: AppCompatActivity,
+    protected val activity: FragmentActivity,
     var dataSet: MutableList<Song>,
     protected var itemLayoutRes: Int,
-    cabHolder: CabHolder?,
+    ICabHolder: ICabHolder?,
     showSectionName: Boolean = true
 ) : AbsMultiSelectAdapter<SongAdapter.ViewHolder, Song>(
     activity,
-    cabHolder,
+    ICabHolder,
     R.menu.menu_media_selection
 ), MaterialCab.Callback, PopupTextProvider {
 
@@ -58,7 +74,7 @@ open class SongAdapter(
     }
 
     override fun getItemId(position: Int): Long {
-        return dataSet[position].id.toLong()
+        return dataSet[position].id
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -86,6 +102,7 @@ open class SongAdapter(
         }
         holder.title?.text = getSongTitle(song)
         holder.text?.text = getSongText(song)
+        holder.text2?.text = getSongText(song)
         loadAlbumCover(song, holder)
     }
 
@@ -94,6 +111,7 @@ open class SongAdapter(
             holder.title?.setTextColor(color.primaryTextColor)
             holder.text?.setTextColor(color.secondaryTextColor)
             holder.paletteColorContainer?.setBackgroundColor(color.backgroundColor)
+            holder.menu?.imageTintList= ColorStateList.valueOf(color.primaryTextColor)
         }
         holder.mask?.backgroundTintList = ColorStateList.valueOf(color.primaryTextColor)
     }
@@ -120,6 +138,10 @@ open class SongAdapter(
         return song.artistName
     }
 
+    private fun getSongText2(song: Song): String? {
+        return song.albumName
+    }
+
     override fun getItemCount(): Int {
         return dataSet.size
     }
@@ -132,7 +154,7 @@ open class SongAdapter(
         return song.title
     }
 
-    override fun onMultipleItemAction(menuItem: MenuItem, selection: ArrayList<Song>) {
+    override fun onMultipleItemAction(menuItem: MenuItem, selection: List<Song>) {
         SongsMenuHelper.handleMenuClick(activity, selection, menuItem.itemId)
     }
 
@@ -147,7 +169,6 @@ open class SongAdapter(
                 return ""
             }
         }
-
         return MusicUtil.getSectionName(sectionName)
     }
 
@@ -157,7 +178,6 @@ open class SongAdapter(
             get() = dataSet[layoutPosition]
 
         init {
-            setImageTransitionName(activity.getString(R.string.transition_album_art))
             menu?.setOnClickListener(object : SongMenuHelper.OnClickSongMenu(activity) {
                 override val song: Song
                     get() = this@ViewHolder.song
@@ -172,15 +192,14 @@ open class SongAdapter(
         }
 
         protected open fun onSongMenuItemClick(item: MenuItem): Boolean {
-            if (image != null && image!!.visibility == View.VISIBLE) {
+            if (image != null && image!!.isVisible) {
                 when (item.itemId) {
                     R.id.action_go_to_album -> {
-                        val activityOptions = ActivityOptions.makeSceneTransitionAnimation(
-                            activity,
-                            imageContainerCard ?: image,
-                            activity.getString(R.string.transition_album_art)
-                        )
-                        NavigationUtil.goToAlbumOptions(activity, song.albumId, activityOptions)
+                        activity.findNavController(R.id.fragment_container)
+                            .navigate(
+                                R.id.albumDetailsFragment,
+                                bundleOf(EXTRA_ALBUM_ID to song.albumId)
+                            )
                         return true
                     }
                 }

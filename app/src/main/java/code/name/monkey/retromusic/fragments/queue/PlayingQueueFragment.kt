@@ -1,15 +1,16 @@
 /*
- * Copyright (c) 2019 Hemanth Savarala.
+ * Copyright (c) 2020 Hemanth Savarla.
  *
  * Licensed under the GNU General Public License v3
  *
- * This is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by
- *  the Free Software Foundation either version 3 of the License, or (at your option) any later version.
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
  * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
+ *
  */
 package code.name.monkey.retromusic.fragments.queue
 
@@ -22,7 +23,6 @@ import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.adapter.song.PlayingQueueAdapter
 import code.name.monkey.retromusic.fragments.base.AbsRecyclerViewFragment
 import code.name.monkey.retromusic.helper.MusicPlayerRemote
-import code.name.monkey.retromusic.interfaces.MainActivityFragmentCallbacks
 import com.h6ah4i.android.widget.advrecyclerview.animator.DraggableItemAnimator
 import com.h6ah4i.android.widget.advrecyclerview.draggable.RecyclerViewDragDropManager
 import com.h6ah4i.android.widget.advrecyclerview.swipeable.RecyclerViewSwipeManager
@@ -33,13 +33,7 @@ import kotlinx.android.synthetic.main.activity_playing_queue.*
 /**
  * Created by hemanths on 2019-12-08.
  */
-class PlayingQueueFragment :
-    AbsRecyclerViewFragment<PlayingQueueAdapter, LinearLayoutManager>(),
-    MainActivityFragmentCallbacks {
-
-    override fun handleBackPress(): Boolean {
-        return false
-    }
+class PlayingQueueFragment : AbsRecyclerViewFragment<PlayingQueueAdapter, LinearLayoutManager>() {
 
     private lateinit var wrappedAdapter: RecyclerView.Adapter<*>
     private var recyclerViewDragDropManager: RecyclerViewDragDropManager? = null

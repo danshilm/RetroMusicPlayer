@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.activities.tageditor
 
 import android.app.Activity
@@ -18,7 +32,8 @@ import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.extensions.appHandleColor
 import code.name.monkey.retromusic.glide.palette.BitmapPaletteTranscoder
 import code.name.monkey.retromusic.glide.palette.BitmapPaletteWrapper
-import code.name.monkey.retromusic.loaders.AlbumLoader
+import code.name.monkey.retromusic.model.ArtworkInfo
+import code.name.monkey.retromusic.model.Song
 import code.name.monkey.retromusic.util.ImageUtil
 import code.name.monkey.retromusic.util.RetroColorUtil.generatePalette
 import code.name.monkey.retromusic.util.RetroColorUtil.getColor
@@ -26,11 +41,12 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.animation.GlideAnimation
 import com.bumptech.glide.request.target.SimpleTarget
+import java.util.*
 import kotlinx.android.synthetic.main.activity_album_tag_editor.*
 import org.jaudiotagger.tag.FieldKey
-import java.util.*
 
 class AlbumTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
+
     override val contentViewLayout: Int
         get() = R.layout.activity_album_tag_editor
 
@@ -44,9 +60,9 @@ class AlbumTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
         window.enterTransition = slide
     }
 
-    override fun loadImageFromFile(selectedFileUri: Uri?) {
+    override fun loadImageFromFile(selectedFile: Uri?) {
 
-        Glide.with(this@AlbumTagEditorActivity).load(selectedFileUri).asBitmap()
+        Glide.with(this@AlbumTagEditorActivity).load(selectedFile).asBitmap()
             .transcode(BitmapPaletteTranscoder(this), BitmapPaletteWrapper::class.java)
             .diskCacheStrategy(DiskCacheStrategy.NONE).skipMemoryCache(true)
             .into(object : SimpleTarget<BitmapPaletteWrapper>() {
@@ -154,7 +170,7 @@ class AlbumTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
     override fun save() {
         val fieldKeyValueMap = EnumMap<FieldKey, String>(FieldKey::class.java)
         fieldKeyValueMap[FieldKey.ALBUM] = albumText.text.toString()
-        //android seems not to recognize album_artist field so we additionally write the normal artist field
+        // android seems not to recognize album_artist field so we additionally write the normal artist field
         fieldKeyValueMap[FieldKey.ARTIST] = albumArtistText.text.toString()
         fieldKeyValueMap[FieldKey.ALBUM_ARTIST] = albumArtistText.text.toString()
         fieldKeyValueMap[FieldKey.GENRE] = genreTitle.text.toString()
@@ -162,18 +178,17 @@ class AlbumTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
 
         writeValuesToFiles(
             fieldKeyValueMap,
-            if (deleteAlbumArt) AbsTagEditorActivity.ArtworkInfo(id, null)
-            else if (albumArtBitmap == null) null else ArtworkInfo(id, albumArtBitmap!!)
+            when {
+                deleteAlbumArt -> ArtworkInfo(id, null)
+                albumArtBitmap == null -> null
+                else -> ArtworkInfo(id, albumArtBitmap!!)
+            }
         )
     }
 
     override fun getSongPaths(): List<String> {
-        val songs = AlbumLoader.getAlbum(this, id).songs
-        val paths = ArrayList<String>(songs!!.size)
-        for (song in songs) {
-            paths.add(song.data)
-        }
-        return paths
+        return repository.albumById(id).songs
+            .map(Song::data)
     }
 
     override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {

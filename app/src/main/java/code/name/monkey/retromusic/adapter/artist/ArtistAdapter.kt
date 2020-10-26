@@ -1,13 +1,27 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.adapter.artist
 
-import android.app.ActivityOptions
 import android.content.res.ColorStateList
 import android.content.res.Resources
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.fragment.app.FragmentActivity
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.adapter.base.AbsMultiSelectAdapter
 import code.name.monkey.retromusic.adapter.base.MediaEntryViewHolder
@@ -15,23 +29,24 @@ import code.name.monkey.retromusic.extensions.hide
 import code.name.monkey.retromusic.glide.ArtistGlideRequest
 import code.name.monkey.retromusic.glide.RetroMusicColoredTarget
 import code.name.monkey.retromusic.helper.menu.SongsMenuHelper
-import code.name.monkey.retromusic.interfaces.CabHolder
+import code.name.monkey.retromusic.interfaces.IArtistClickListener
+import code.name.monkey.retromusic.interfaces.ICabHolder
 import code.name.monkey.retromusic.model.Artist
 import code.name.monkey.retromusic.model.Song
 import code.name.monkey.retromusic.util.MusicUtil
-import code.name.monkey.retromusic.util.NavigationUtil
 import code.name.monkey.retromusic.util.color.MediaNotificationProcessor
 import com.bumptech.glide.Glide
-import me.zhanghai.android.fastscroll.PopupTextProvider
 import java.util.*
+import me.zhanghai.android.fastscroll.PopupTextProvider
 
 class ArtistAdapter(
-    val activity: AppCompatActivity,
+    val activity: FragmentActivity,
     var dataSet: List<Artist>,
     var itemLayoutRes: Int,
-    cabHolder: CabHolder?
+    val ICabHolder: ICabHolder?,
+    val IArtistClickListener: IArtistClickListener
 ) : AbsMultiSelectAdapter<ArtistAdapter.ViewHolder, Artist>(
-    activity, cabHolder, R.menu.menu_media_selection
+    activity, ICabHolder, R.menu.menu_media_selection
 ), PopupTextProvider {
 
     init {
@@ -44,7 +59,7 @@ class ArtistAdapter(
     }
 
     override fun getItemId(position: Int): Long {
-        return dataSet[position].id.toLong()
+        return dataSet[position].id
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -106,12 +121,13 @@ class ArtistAdapter(
     }
 
     override fun onMultipleItemAction(
-        menuItem: MenuItem, selection: ArrayList<Artist>
+        menuItem: MenuItem,
+        selection: List<Artist>
     ) {
         SongsMenuHelper.handleMenuClick(activity, getSongList(selection), menuItem.itemId)
     }
 
-    private fun getSongList(artists: List<Artist>): ArrayList<Song> {
+    private fun getSongList(artists: List<Artist>): List<Song> {
         val songs = ArrayList<Song>()
         for (artist in artists) {
             songs.addAll(artist.songs) // maybe async in future?
@@ -130,7 +146,6 @@ class ArtistAdapter(
     inner class ViewHolder(itemView: View) : MediaEntryViewHolder(itemView) {
 
         init {
-            setImageTransitionName(activity.getString(R.string.transition_artist_image))
             menu?.visibility = View.GONE
         }
 
@@ -139,14 +154,10 @@ class ArtistAdapter(
             if (isInQuickSelectMode) {
                 toggleChecked(layoutPosition)
             } else {
-                val activityOptions = ActivityOptions.makeSceneTransitionAnimation(
-                    activity,
-                    imageContainerCard ?: image,
-                    activity.getString(R.string.transition_artist_image)
-                )
-                NavigationUtil.goToArtistOptions(
-                    activity, dataSet[layoutPosition].id, activityOptions
-                )
+                image?.let {
+                    ViewCompat.setTransitionName(itemView, "album")
+                    IArtistClickListener.onArtist(dataSet[layoutPosition].id, itemView)
+                }
             }
         }
 

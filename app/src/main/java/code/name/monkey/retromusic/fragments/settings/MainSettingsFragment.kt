@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2019 Hemanth Savarala.
+ * Copyright (c) 2020 Hemanth Savarla.
  *
  * Licensed under the GNU General Public License v3
  *
- * This is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by
- *  the Free Software Foundation either version 3 of the License, or (at your option) any later version.
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
  * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
+ *
  */
-
 package code.name.monkey.retromusic.fragments.settings
 
 import android.content.res.ColorStateList
@@ -19,13 +19,11 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.annotation.StringRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import code.name.monkey.appthemehelper.ThemeStore
 import code.name.monkey.retromusic.App
 import code.name.monkey.retromusic.R
-import code.name.monkey.retromusic.activities.SettingsActivity
 import code.name.monkey.retromusic.extensions.hide
 import code.name.monkey.retromusic.extensions.show
 import code.name.monkey.retromusic.util.NavigationUtil
@@ -46,7 +44,8 @@ class MainSettingsFragment : Fragment(), View.OnClickListener {
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.fragment_main_settings, container, false)
@@ -65,7 +64,7 @@ class MainSettingsFragment : Fragment(), View.OnClickListener {
         aboutSettings.setOnClickListener(this)
 
         buyProContainer.apply {
-            if (!App.isProVersion()) show() else hide()
+            if (App.isProVersion()) hide() else show()
             setOnClickListener {
                 NavigationUtil.goToProVersion(requireContext())
             }
@@ -77,13 +76,5 @@ class MainSettingsFragment : Fragment(), View.OnClickListener {
             buyPremium.setTextColor(it)
             diamondIcon.imageTintList = ColorStateList.valueOf(it)
         }
-    }
-
-    companion object {
-
-    }
-
-    private fun inflateFragment(fragment: Fragment, @StringRes title: Int) {
-        (requireActivity() as SettingsActivity).setupFragment(fragment, title)
     }
 }

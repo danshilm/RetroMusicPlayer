@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.fragments.player.classic
 
 import android.animation.ObjectAnimator
@@ -20,7 +34,6 @@ import code.name.monkey.appthemehelper.util.TintHelper
 import code.name.monkey.appthemehelper.util.ToolbarContentTintHelper
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.RetroBottomSheetBehavior
-import code.name.monkey.retromusic.activities.base.AbsSlidingMusicPanelActivity
 import code.name.monkey.retromusic.adapter.song.PlayingQueueAdapter
 import code.name.monkey.retromusic.extensions.hide
 import code.name.monkey.retromusic.extensions.show
@@ -69,9 +82,7 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
 
     private val bottomSheetCallbackList = object : BottomSheetBehavior.BottomSheetCallback() {
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
-            (requireActivity() as AbsSlidingMusicPanelActivity).getBottomSheetBehavior()
-                .setAllowDragging(false)
-
+            mainActivity.getBottomSheetBehavior().setAllowDragging(false)
             playerQueueSheet.setContentPadding(
                 playerQueueSheet.contentPaddingLeft,
                 (slideOffset * status_bar.height).toInt(),
@@ -83,18 +94,17 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         }
 
         override fun onStateChanged(bottomSheet: View, newState: Int) {
-            val activity = requireActivity() as AbsSlidingMusicPanelActivity
             when (newState) {
                 BottomSheetBehavior.STATE_EXPANDED,
                 BottomSheetBehavior.STATE_DRAGGING -> {
-                    activity.getBottomSheetBehavior().setAllowDragging(false)
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(false)
                 }
                 BottomSheetBehavior.STATE_COLLAPSED -> {
                     resetToCurrentPosition()
-                    activity.getBottomSheetBehavior().setAllowDragging(true)
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(true)
                 }
                 else -> {
-                    activity.getBottomSheetBehavior().setAllowDragging(true)
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(true)
                 }
             }
         }
@@ -132,8 +142,7 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         playerQueueSheet.background = shapeDrawable
 
         playerQueueSheet.setOnTouchListener { _, _ ->
-            (requireActivity() as AbsSlidingMusicPanelActivity).getBottomSheetBehavior()
-                .setAllowDragging(false)
+            mainActivity.getBottomSheetBehavior().setAllowDragging(false)
             getQueuePanel().setAllowDragging(true)
             return@setOnTouchListener false
         }
@@ -194,7 +203,6 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         recyclerViewDragDropManager?.cancelDrag()
         super.onPause()
         progressViewUpdateHelper.stop()
-
     }
 
     override fun onServiceConnected() {
@@ -206,7 +214,6 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
 
     override fun onPlayStateChanged() {
         updatePlayPauseDrawableState()
-
     }
 
     override fun onRepeatModeChanged() {
@@ -223,23 +230,19 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         updateQueuePosition()
     }
 
-
     override fun onQueueChanged() {
         super.onQueueChanged()
         updateQueue()
     }
-
 
     override fun playerToolbar(): Toolbar? {
         return playerToolbar
     }
 
     override fun onShow() {
-
     }
 
     override fun onHide() {
-
     }
 
     override fun onBackPressed(): Boolean {
@@ -356,7 +359,6 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         )
     }
 
-
     private fun setupRecyclerView() {
         playingQueueAdapter = PlayingQueueAdapter(
             requireActivity() as AppCompatActivity,
@@ -419,7 +421,6 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
         setUpProgressSlider()
     }
 
-
     private fun setUpPrevNext() {
         updatePrevNextColor()
         nextButton.setOnClickListener { MusicPlayerRemote.playNextSong() }
@@ -472,7 +473,6 @@ class ClassicPlayerFragment : AbsPlayerFragment(R.layout.fragment_classic_player
             }
         }
     }
-
 
     override fun onLayoutChange(
         v: View?,

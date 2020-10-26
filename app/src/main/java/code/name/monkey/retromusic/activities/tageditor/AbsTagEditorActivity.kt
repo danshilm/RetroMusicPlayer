@@ -1,13 +1,25 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.activities.tageditor
 
 import android.app.Activity
 import android.app.SearchManager
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.MenuItem
@@ -16,13 +28,15 @@ import android.view.animation.OvershootInterpolator
 import androidx.appcompat.app.AlertDialog
 import code.name.monkey.appthemehelper.ThemeStore
 import code.name.monkey.appthemehelper.util.ATHUtil
-import code.name.monkey.appthemehelper.util.ColorUtil
-import code.name.monkey.appthemehelper.util.MaterialValueHelper
 import code.name.monkey.appthemehelper.util.TintHelper
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.R.drawable
 import code.name.monkey.retromusic.activities.base.AbsBaseActivity
 import code.name.monkey.retromusic.activities.saf.SAFGuideActivity
+import code.name.monkey.retromusic.extensions.accentColor
+import code.name.monkey.retromusic.model.ArtworkInfo
+import code.name.monkey.retromusic.model.LoadingInfo
+import code.name.monkey.retromusic.repository.Repository
 import code.name.monkey.retromusic.util.RetroUtil
 import code.name.monkey.retromusic.util.SAFUtil
 import com.google.android.material.button.MaterialButton
@@ -31,22 +45,25 @@ import kotlinx.android.synthetic.main.activity_album_tag_editor.*
 import org.jaudiotagger.audio.AudioFile
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
+import org.koin.android.ext.android.inject
 import java.io.File
 import java.util.*
 
 abstract class AbsTagEditorActivity : AbsBaseActivity() {
+    val repository by inject<Repository>()
 
-    protected var id: Int = 0
+    lateinit var saveFab: MaterialButton
+    protected var id: Long = 0
         private set
     private var paletteColorPrimary: Int = 0
     private var isInNoImageMode: Boolean = false
     private var songPaths: List<String>? = null
-    lateinit var saveFab: MaterialButton
-
     private var savedSongPaths: List<String>? = null
     private val currentSongPath: String? = null
     private var savedTags: Map<FieldKey, String>? = null
     private var savedArtworkInfo: ArtworkInfo? = null
+    protected abstract val contentViewLayout: Int
+    protected abstract fun loadImageFromFile(selectedFile: Uri?)
 
     protected val show: AlertDialog
         get() =
@@ -60,7 +77,6 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
                     }
                 }
                 .show()
-    protected abstract val contentViewLayout: Int
 
     internal val albumArtist: String?
         get() {
@@ -172,31 +188,24 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(contentViewLayout)
+        setStatusbarColorAuto()
+        setNavigationbarColorAuto()
+        setTaskDescriptionColorAuto()
 
         saveFab = findViewById(R.id.saveTags)
         getIntentExtras()
 
         songPaths = getSongPaths()
+        println(songPaths?.size)
         if (songPaths!!.isEmpty()) {
             finish()
-            return
         }
-
         setUpViews()
-
-        setStatusbarColorAuto()
-        setNavigationbarColorAuto()
-        setTaskDescriptionColorAuto()
     }
 
     private fun setUpViews() {
-        setUpScrollView()
         setUpFab()
         setUpImageView()
-    }
-
-    private fun setUpScrollView() {
-        //observableScrollView.setScrollViewCallbacks(observableScrollViewCallbacks);
     }
 
     private lateinit var items: List<String>
@@ -204,9 +213,9 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
     private fun setUpImageView() {
         loadCurrentImage()
         items = listOf(
-            getString(code.name.monkey.retromusic.R.string.pick_from_local_storage),
-            getString(code.name.monkey.retromusic.R.string.web_search),
-            getString(code.name.monkey.retromusic.R.string.remove_cover)
+            getString(R.string.pick_from_local_storage),
+            getString(R.string.web_search),
+            getString(R.string.remove_cover)
         )
         editorImage?.setOnClickListener { show }
     }
@@ -217,7 +226,7 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
         startActivityForResult(
             Intent.createChooser(
                 intent,
-                getString(code.name.monkey.retromusic.R.string.pick_from_local_storage)
+                getString(R.string.pick_from_local_storage)
             ), REQUEST_CODE_SELECT_IMAGE
         )
     }
@@ -229,20 +238,7 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
     protected abstract fun deleteImage()
 
     private fun setUpFab() {
-        saveFab.backgroundTintList = ColorStateList.valueOf(ThemeStore.accentColor(this))
-        ColorStateList.valueOf(
-            MaterialValueHelper.getPrimaryTextColor(
-                this,
-                ColorUtil.isColorLight(
-                    ThemeStore.accentColor(
-                        this
-                    )
-                )
-            )
-        ).apply {
-            saveFab.setTextColor(this)
-            saveFab.iconTint = this
-        }
+        saveFab.accentColor()
         saveFab.apply {
             scaleX = 0f
             scaleY = 0f
@@ -257,7 +253,7 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
     private fun getIntentExtras() {
         val intentExtras = intent.extras
         if (intentExtras != null) {
-            id = intentExtras.getInt(EXTRA_ID)
+            id = intentExtras.getLong(EXTRA_ID)
         }
     }
 
@@ -330,41 +326,32 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
     }
 
     protected fun writeValuesToFiles(
-        fieldKeyValueMap: Map<FieldKey, String>, artworkInfo: ArtworkInfo?
+        fieldKeyValueMap: Map<FieldKey, String>,
+        artworkInfo: ArtworkInfo?
     ) {
         RetroUtil.hideSoftKeyboard(this)
 
         hideFab()
-
-        savedSongPaths = getSongPaths()
-        savedTags = fieldKeyValueMap
-        savedArtworkInfo = artworkInfo
-
-        if (!SAFUtil.isSAFRequired(savedSongPaths)) {
-            writeTags(savedSongPaths)
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                if (SAFUtil.isSDCardAccessGranted(this)) {
-                    writeTags(savedSongPaths)
-                } else {
-                    startActivityForResult(
-                        Intent(this, SAFGuideActivity::class.java),
-                        SAFGuideActivity.REQUEST_CODE_SAF_GUIDE
-                    )
-                }
-            }
-        }
+        println(fieldKeyValueMap)
+        WriteTagsAsyncTask(this).execute(
+            LoadingInfo(
+                songPaths,
+                fieldKeyValueMap,
+                artworkInfo
+            )
+        )
     }
 
     private fun writeTags(paths: List<String>?) {
         WriteTagsAsyncTask(this).execute(
-            WriteTagsAsyncTask.LoadingInfo(
+            LoadingInfo(
                 paths,
                 savedTags,
                 savedArtworkInfo
             )
         )
     }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
         super.onActivityResult(requestCode, resultCode, intent)
@@ -391,7 +378,6 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
         }
     }
 
-    protected abstract fun loadImageFromFile(selectedFile: Uri?)
 
     private fun getAudioFile(path: String): AudioFile {
         return try {
@@ -402,7 +388,6 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
         }
     }
 
-    class ArtworkInfo constructor(val albumId: Int, val artwork: Bitmap?)
 
     companion object {
 
@@ -411,5 +396,4 @@ abstract class AbsTagEditorActivity : AbsBaseActivity() {
         private val TAG = AbsTagEditorActivity::class.java.simpleName
         private const val REQUEST_CODE_SELECT_IMAGE = 1000
     }
-
 }

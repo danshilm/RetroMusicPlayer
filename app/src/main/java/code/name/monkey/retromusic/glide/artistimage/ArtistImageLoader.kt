@@ -1,22 +1,23 @@
 /*
- * Copyright (c) 2019 Hemanth Savarala.
+ * Copyright (c) 2020 Hemanth Savarla.
  *
  * Licensed under the GNU General Public License v3
  *
- * This is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by
- *  the Free Software Foundation either version 3 of the License, or (at your option) any later version.
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
  * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
+ *
  */
-
 package code.name.monkey.retromusic.glide.artistimage
 
 import android.content.Context
-import code.name.monkey.retromusic.deezer.DeezerApiService
-import code.name.monkey.retromusic.deezer.Data
+import code.name.monkey.retromusic.model.Artist
+import code.name.monkey.retromusic.model.Data
+import code.name.monkey.retromusic.network.DeezerService
 import code.name.monkey.retromusic.util.MusicUtil
 import code.name.monkey.retromusic.util.PreferenceUtil
 import com.bumptech.glide.Priority
@@ -27,18 +28,18 @@ import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.model.ModelLoader
 import com.bumptech.glide.load.model.ModelLoaderFactory
 import com.bumptech.glide.load.model.stream.StreamModelLoader
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 
-class ArtistImage(val artistName: String)
+class ArtistImage(val artist: Artist)
 
 class ArtistImageFetcher(
     private val context: Context,
-    private val deezerApiService: DeezerApiService,
+    private val deezerService: DeezerService,
     val model: ArtistImage,
     val urlLoader: ModelLoader<GlideUrl, InputStream>,
     val width: Int,
@@ -53,7 +54,7 @@ class ArtistImageFetcher(
     }
 
     override fun getId(): String {
-        return model.artistName
+        return model.artist.name
     }
 
     override fun cancel() {
@@ -62,20 +63,20 @@ class ArtistImageFetcher(
     }
 
     override fun loadData(priority: Priority?): InputStream? {
-        if (!MusicUtil.isArtistNameUnknown(model.artistName) &&
+        if (!MusicUtil.isArtistNameUnknown(model.artist.name) &&
             PreferenceUtil.isAllowedToDownloadMetadata()
         ) {
-            val artists = model.artistName.split(",")
-            val response = deezerApiService.getArtistImage(artists[0]).execute()
+            val artists = model.artist.name.split(",")
+            val response = deezerService.getArtistImage(artists[0]).execute()
 
             if (!response.isSuccessful) {
-                throw   IOException("Request failed with code: " + response.code());
+                throw IOException("Request failed with code: " + response.code())
             }
 
             if (isCancelled) return null
 
             return try {
-                val deezerResponse = response.body();
+                val deezerResponse = response.body()
                 val imageUrl = deezerResponse?.data?.get(0)?.let { getHighestQuality(it) }
                 // Fragile way to detect a place holder image returned from Deezer:
                 // ex: "https://e-cdns-images.dzcdn.net/images/artist//250x250-000000-80-0-0.jpg"
@@ -85,11 +86,18 @@ class ArtistImageFetcher(
                     val glideUrl = GlideUrl(imageUrl)
                     urlFetcher = urlLoader.getResourceFetcher(glideUrl, width, height)
                     urlFetcher?.loadData(priority)
-                } else null
+                } else {
+                    getFallbackAlbumImage()
+                }
             } catch (e: Exception) {
-                null
+                getFallbackAlbumImage()
             }
         } else return null
+    }
+
+    private fun getFallbackAlbumImage(): InputStream? {
+        val imageUri = MusicUtil.getMediaStoreAlbumCoverUri(model.artist.safeGetFirstAlbum().id)
+        return context.contentResolver.openInputStream(imageUri)
     }
 
     private fun getHighestQuality(imageUrl: Data): String {
@@ -106,7 +114,7 @@ class ArtistImageFetcher(
 
 class ArtistImageLoader(
     val context: Context,
-    private val deezerApiService: DeezerApiService,
+    private val deezerService: DeezerService,
     private val urlLoader: ModelLoader<GlideUrl, InputStream>
 ) : StreamModelLoader<ArtistImage> {
 
@@ -115,7 +123,7 @@ class ArtistImageLoader(
         width: Int,
         height: Int
     ): DataFetcher<InputStream> {
-        return ArtistImageFetcher(context, deezerApiService, model, urlLoader, width, height)
+        return ArtistImageFetcher(context, deezerService, model, urlLoader, width, height)
     }
 }
 
@@ -123,7 +131,7 @@ class Factory(
     val context: Context
 ) : ModelLoaderFactory<ArtistImage, InputStream> {
 
-    private var deezerApiService: DeezerApiService
+    private var deezerService: DeezerService
     private var okHttpFactory: OkHttpUrlLoader.Factory
 
     init {
@@ -134,8 +142,8 @@ class Factory(
                 .writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
                 .build()
         )
-        deezerApiService = DeezerApiService.invoke(
-            DeezerApiService.createDefaultOkHttpClient(context)
+        deezerService = DeezerService.invoke(
+            DeezerService.createDefaultOkHttpClient(context)
                 .connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
                 .readTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
                 .writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS)
@@ -156,7 +164,7 @@ class Factory(
     ): ModelLoader<ArtistImage, InputStream> {
         return ArtistImageLoader(
             context!!,
-            deezerApiService,
+            deezerService,
             okHttpFactory.build(context, factories)
         )
     }

@@ -2,26 +2,39 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/recentArtistContainer"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:orientation="vertical" >
 
-
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/title"
+    <LinearLayout
+        android:id="@+id/clickable_area"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp"
-        android:textAppearance="@style/TextViewHeadline6"
-        android:textStyle="bold"
-        app:layout_constrainedWidth="true"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?attr/rectSelector"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="@tools:sample/full_names" />
+        app:layout_constraintTop_toTopOf="parent">
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="16dp"
+            android:textAppearance="@style/TextViewHeadline6"
+            android:textStyle="bold"
+            tools:text="@tools:sample/full_names" />
+
+        <code.name.monkey.retromusic.views.AccentIcon
+            android:id="@+id/arrow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            app:srcCompat="@drawable/ic_arrow_forward" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerView"
@@ -29,10 +42,9 @@
         android:layout_height="wrap_content"
         android:nestedScrollingEnabled="false"
         android:overScrollMode="never"
-        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title"
+        app:layout_constraintTop_toBottomOf="@+id/clickable_area"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

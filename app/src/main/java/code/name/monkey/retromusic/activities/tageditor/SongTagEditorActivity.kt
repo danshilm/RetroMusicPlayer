@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.activities.tageditor
 
 import android.net.Uri
@@ -8,15 +22,18 @@ import code.name.monkey.appthemehelper.util.ATHUtil
 import code.name.monkey.appthemehelper.util.MaterialUtil
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.extensions.appHandleColor
-import code.name.monkey.retromusic.loaders.SongLoader
+import code.name.monkey.retromusic.repository.SongRepository
 import kotlinx.android.synthetic.main.activity_song_tag_editor.*
 import org.jaudiotagger.tag.FieldKey
+import org.koin.android.ext.android.inject
 import java.util.*
 
 class SongTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
 
     override val contentViewLayout: Int
         get() = R.layout.activity_song_tag_editor
+
+    private val songRepository by inject<SongRepository>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,11 +102,7 @@ class SongTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
         writeValuesToFiles(fieldKeyValueMap, null)
     }
 
-    override fun getSongPaths(): List<String> {
-        val paths = ArrayList<String>(1)
-        paths.add(SongLoader.getSong(this, id).data)
-        return paths
-    }
+    override fun getSongPaths(): List<String> = listOf(songRepository.song(id).data)
 
     override fun loadImageFromFile(selectedFile: Uri?) {
     }
@@ -108,5 +121,3 @@ class SongTagEditorActivity : AbsTagEditorActivity(), TextWatcher {
         val TAG: String = SongTagEditorActivity::class.java.simpleName
     }
 }
-
-

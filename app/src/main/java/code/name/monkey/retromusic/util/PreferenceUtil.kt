@@ -1,6 +1,5 @@
 package code.name.monkey.retromusic.util
 
-import android.content.Context
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.net.ConnectivityManager
 import android.net.NetworkInfo
@@ -35,7 +34,6 @@ object PreferenceUtil {
         CategoryInfo(CategoryInfo.Category.Artists, true),
         CategoryInfo(CategoryInfo.Category.Playlists, true),
         CategoryInfo(CategoryInfo.Category.Genres, false),
-        CategoryInfo(CategoryInfo.Category.Queue, false),
         CategoryInfo(CategoryInfo.Category.Folder, false)
     )
 
@@ -93,7 +91,7 @@ object PreferenceUtil {
         }
     }
 
-    val languageCode get() = sharedPreferences.getString(LANGUAGE_NAME, "auto")
+    val languageCode: String get() = sharedPreferences.getString(LANGUAGE_NAME, "auto") ?: "auto"
 
     var userName
         get() = sharedPreferences.getString(
@@ -110,18 +108,18 @@ object PreferenceUtil {
             putString(SAF_SDCARD_URI, value)
         }
 
-
-    val selectedEqualizer
-        get() = sharedPreferences.getStringOrDefault(
-            CHOOSE_EQUALIZER,
-            "system"
-        )
-
     val autoDownloadImagesPolicy
         get() = sharedPreferences.getStringOrDefault(
             AUTO_DOWNLOAD_IMAGES_POLICY,
             "only_wifi"
         )
+
+    var albumArtistsOnly
+        get() = sharedPreferences.getBoolean(
+            ALBUM_ARTISTS_ONLY,
+            false
+        )
+        set(value) = sharedPreferences.edit { putBoolean(ALBUM_ARTISTS_ONLY, value) }
 
     var albumDetailSongSortOrder
         get() = sharedPreferences.getStringOrDefault(
@@ -148,10 +146,11 @@ object PreferenceUtil {
             putString(ALBUM_SORT_ORDER, value)
         }
 
+
     var artistSortOrder
         get() = sharedPreferences.getStringOrDefault(
             ARTIST_SORT_ORDER,
-            AlbumSortOrder.ALBUM_A_Z
+            ArtistSortOrder.ARTIST_A_Z
         )
         set(value) = sharedPreferences.edit {
             putString(ARTIST_SORT_ORDER, value)
@@ -174,6 +173,15 @@ object PreferenceUtil {
             ARTIST_ALBUM_SORT_ORDER,
             ArtistAlbumSortOrder.ALBUM_A_Z
         )
+
+    var playlistSortOrder
+        get() = sharedPreferences.getStringOrDefault(
+            PLAYLIST_SORT_ORDER,
+            PlaylistSortOrder.PLAYLIST_A_Z
+        )
+        set(value) = sharedPreferences.edit {
+            putString(PLAYLIST_SORT_ORDER, value)
+        }
 
     val genreSortOrder
         get() = sharedPreferences.getStringOrDefault(
@@ -243,7 +251,7 @@ object PreferenceUtil {
 
     val isAlbumArtOnLockScreen
         get() = sharedPreferences.getBoolean(
-            ALBUM_ART_ON_LOCKSCREEN, false
+            ALBUM_ART_ON_LOCK_SCREEN, false
         )
 
     val isAudioDucking
@@ -292,7 +300,7 @@ object PreferenceUtil {
 
     val isGapLessPlayback
         get() = sharedPreferences.getBoolean(
-            GAPLESS_PLAYBACK, false
+            GAP_LESS_PLAYBACK, false
         )
 
     val isAdaptiveColor
@@ -368,11 +376,6 @@ object PreferenceUtil {
             putInt(LAST_SLEEP_TIMER_VALUE, value)
         }
 
-    var lastPage
-        get() = sharedPreferences.getInt(LAST_PAGE, R.id.action_song)
-        set(value) = sharedPreferences.edit {
-            putInt(LAST_PAGE, value)
-        }
 
     var nextSleepTimerElapsedRealTime
         get() = sharedPreferences.getInt(
@@ -391,15 +394,28 @@ object PreferenceUtil {
         }
     }
 
-    val homeGridStyle: Int
+    val homeArtistGridStyle: Int
         get() {
-            val position =
-                sharedPreferences.getStringOrDefault(
-                    HOME_ARTIST_GRID_STYLE, "0"
-                ).toInt()
-            val typedArray =
-                App.getContext().resources.obtainTypedArray(R.array.pref_home_grid_style_layout)
+            val position = sharedPreferences.getStringOrDefault(
+                HOME_ARTIST_GRID_STYLE, "0"
+            ).toInt()
+            val typedArray = App.getContext()
+                .resources.obtainTypedArray(R.array.pref_home_grid_style_layout)
             val layoutRes = typedArray.getResourceId(position, 0)
+            typedArray.recycle()
+            return if (layoutRes == 0) {
+                R.layout.item_artist
+            } else layoutRes
+        }
+
+    val homeAlbumGridStyle: Int
+        get() {
+            val position = sharedPreferences.getStringOrDefault(
+                HOME_ALBUM_GRID_STYLE, "4"
+            ).toInt()
+            val typedArray = App.getContext()
+                .resources.obtainTypedArray(R.array.pref_home_grid_style_layout)
+            val layoutRes = typedArray.getResourceId(position, 4)
             typedArray.recycle()
             return if (layoutRes == 0) {
                 R.layout.item_artist
@@ -471,7 +487,7 @@ object PreferenceUtil {
 
     var artistGridSizeLand
         get() = sharedPreferences.getInt(
-            ALBUM_GRID_SIZE_LAND,
+            ARTIST_GRID_SIZE_LAND,
             App.getContext().getIntRes(R.integer.default_grid_columns_land)
         )
         set(value) = sharedPreferences.edit {
@@ -528,7 +544,7 @@ object PreferenceUtil {
         get() {
             val folderPath = FoldersFragment.getDefaultStartDirectory().path
             val filePath: String = sharedPreferences.getStringOrDefault(START_DIRECTORY, folderPath)
-            return File(filePath) ?: File(FoldersFragment.getDefaultStartDirectory().path)
+            return File(filePath)
         }
         set(value) = sharedPreferences.edit {
             putString(
@@ -538,32 +554,9 @@ object PreferenceUtil {
         }
 
     fun getRecentlyPlayedCutoffTimeMillis(): Long {
-        return getCutoffTimeMillis(RECENTLY_PLAYED_CUTOFF)
-    }
-
-    fun getRecentlyPlayedCutoffText(context: Context): String? {
-        return getCutoffText(RECENTLY_PLAYED_CUTOFF, context)
-    }
-
-    private fun getCutoffText(
-        cutoff: String,
-        context: Context
-    ): String? {
-        return when (sharedPreferences.getString(cutoff, "")) {
-            "today" -> context.getString(R.string.today)
-            "this_week" -> context.getString(R.string.this_week)
-            "past_seven_days" -> context.getString(R.string.past_seven_days)
-            "past_three_months" -> context.getString(R.string.past_three_months)
-            "this_year" -> context.getString(R.string.this_year)
-            "this_month" -> context.getString(R.string.this_month)
-            else -> context.getString(R.string.this_month)
-        }
-    }
-
-    private fun getCutoffTimeMillis(cutoff: String): Long {
         val calendarUtil = CalendarUtil()
         val interval: Long
-        interval = when (sharedPreferences.getString(cutoff, "")) {
+        interval = when (sharedPreferences.getString(RECENTLY_PLAYED_CUTOFF, "")) {
             "today" -> calendarUtil.elapsedToday
             "this_week" -> calendarUtil.elapsedWeek
             "past_seven_days" -> calendarUtil.getElapsedDays(7)
@@ -589,5 +582,4 @@ object PreferenceUtil {
                 }
             return (System.currentTimeMillis() - interval) / 1000
         }
-
 }

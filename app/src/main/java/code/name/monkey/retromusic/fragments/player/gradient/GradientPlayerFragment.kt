@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.fragments.player.gradient
 
 import android.animation.ObjectAnimator
@@ -5,7 +19,6 @@ import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.PorterDuff
-import android.os.AsyncTask
 import android.os.Bundle
 import android.view.View
 import android.view.animation.LinearInterpolator
@@ -15,14 +28,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.ViewCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import code.name.monkey.appthemehelper.util.ColorUtil
-import code.name.monkey.appthemehelper.util.TintHelper
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.RetroBottomSheetBehavior
-import code.name.monkey.retromusic.activities.base.AbsSlidingMusicPanelActivity
 import code.name.monkey.retromusic.adapter.song.PlayingQueueAdapter
+import code.name.monkey.retromusic.db.PlaylistEntity
+import code.name.monkey.retromusic.db.SongEntity
+import code.name.monkey.retromusic.db.toSongEntity
 import code.name.monkey.retromusic.extensions.hide
 import code.name.monkey.retromusic.extensions.ripAlpha
 import code.name.monkey.retromusic.extensions.show
@@ -39,7 +54,7 @@ import code.name.monkey.retromusic.util.MusicUtil
 import code.name.monkey.retromusic.util.PreferenceUtil
 import code.name.monkey.retromusic.util.ViewUtil
 import code.name.monkey.retromusic.util.color.MediaNotificationProcessor
-import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetBehavior.*
 import com.h6ah4i.android.widget.advrecyclerview.animator.DraggableItemAnimator
 import com.h6ah4i.android.widget.advrecyclerview.draggable.RecyclerViewDragDropManager
 import com.h6ah4i.android.widget.advrecyclerview.swipeable.RecyclerViewSwipeManager
@@ -48,6 +63,9 @@ import com.h6ah4i.android.widget.advrecyclerview.utils.WrapperAdapterUtils
 import kotlinx.android.synthetic.main.fragment_gradient_controls.*
 import kotlinx.android.synthetic.main.fragment_gradient_player.*
 import kotlinx.android.synthetic.main.status_bar.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_player),
     MusicProgressViewUpdateHelper.Callback,
@@ -62,14 +80,11 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
     private var recyclerViewSwipeManager: RecyclerViewSwipeManager? = null
     private var recyclerViewTouchActionGuardManager: RecyclerViewTouchActionGuardManager? = null
     private var playingQueueAdapter: PlayingQueueAdapter? = null
-    private var updateIsFavoriteTask: AsyncTask<*, *, *>? = null
     private lateinit var linearLayoutManager: LinearLayoutManager
 
-    private val bottomSheetCallbackList = object : BottomSheetBehavior.BottomSheetCallback() {
+    private val bottomSheetCallbackList = object : BottomSheetCallback() {
         override fun onSlide(bottomSheet: View, slideOffset: Float) {
-            (requireActivity() as AbsSlidingMusicPanelActivity).getBottomSheetBehavior()
-                .setAllowDragging(false)
-
+            mainActivity.getBottomSheetBehavior().setAllowDragging(false)
             playerQueueSheet.setPadding(
                 playerQueueSheet.paddingLeft,
                 (slideOffset * status_bar.height).toInt(),
@@ -79,18 +94,17 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
         }
 
         override fun onStateChanged(bottomSheet: View, newState: Int) {
-            val activity = requireActivity() as AbsSlidingMusicPanelActivity
             when (newState) {
-                BottomSheetBehavior.STATE_EXPANDED,
-                BottomSheetBehavior.STATE_DRAGGING -> {
-                    activity.getBottomSheetBehavior().setAllowDragging(false)
+                STATE_EXPANDED,
+                STATE_DRAGGING -> {
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(false)
                 }
-                BottomSheetBehavior.STATE_COLLAPSED -> {
+                STATE_COLLAPSED -> {
                     resetToCurrentPosition()
-                    activity.getBottomSheetBehavior().setAllowDragging(true)
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(true)
                 }
                 else -> {
-                    activity.getBottomSheetBehavior().setAllowDragging(true)
+                    mainActivity.getBottomSheetBehavior().setAllowDragging(true)
                 }
             }
         }
@@ -123,7 +137,6 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
         progressViewUpdateHelper = MusicProgressViewUpdateHelper(this)
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         hideVolumeIfAvailable()
@@ -139,8 +152,7 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
     private fun setupSheet() {
         getQueuePanel().addBottomSheetCallback(bottomSheetCallbackList)
         playerQueueSheet.setOnTouchListener { _, _ ->
-            (requireActivity() as AbsSlidingMusicPanelActivity).getBottomSheetBehavior()
-                .setAllowDragging(false)
+            mainActivity.getBottomSheetBehavior().setAllowDragging(false)
             getQueuePanel().setAllowDragging(true)
             return@setOnTouchListener false
         }
@@ -156,10 +168,9 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
     }
 
     override fun onPause() {
-        recyclerViewDragDropManager?.cancelDrag()
         super.onPause()
+        recyclerViewDragDropManager?.cancelDrag()
         progressViewUpdateHelper.stop()
-
     }
 
     override fun playerToolbar(): Toolbar? {
@@ -167,18 +178,16 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
     }
 
     override fun onShow() {
-
     }
 
     override fun onHide() {
-
     }
 
     override fun onBackPressed(): Boolean {
         var wasExpanded = false
-        if (getQueuePanel().state == BottomSheetBehavior.STATE_EXPANDED) {
-            wasExpanded = getQueuePanel().state == BottomSheetBehavior.STATE_EXPANDED
-            getQueuePanel().state = BottomSheetBehavior.STATE_COLLAPSED
+        if (getQueuePanel().state == STATE_EXPANDED) {
+            wasExpanded = getQueuePanel().state == STATE_EXPANDED
+            getQueuePanel().state = STATE_COLLAPSED
             return wasExpanded
         }
         return wasExpanded
@@ -215,7 +224,7 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
         songInfo.setTextColor(lastDisabledPlaybackControlsColor)
 
         volumeFragment?.setTintableColor(lastPlaybackControlsColor.ripAlpha())
-        ViewUtil.setProgressDrawable(progressSlider, color.primaryTextColor.ripAlpha(), true)
+        ViewUtil.setProgressDrawable(progressSlider, lastPlaybackControlsColor.ripAlpha(), true)
 
         updateRepeatState()
         updateShuffleState()
@@ -224,14 +233,30 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
 
     override fun toggleFavorite(song: Song) {
         super.toggleFavorite(song)
-        MusicUtil.toggleFavorite(requireContext(), song)
         if (song.id == MusicPlayerRemote.currentSong.id) {
-            updateFavorite()
+            updateIsFavoriteIcon()
         }
     }
 
     override fun onFavoriteToggled() {
         toggleFavorite(MusicPlayerRemote.currentSong)
+    }
+
+    private fun updateIsFavoriteIcon() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val playlist: PlaylistEntity? = libraryViewModel.favoritePlaylist()
+            if (playlist != null) {
+                val song: SongEntity =
+                    MusicPlayerRemote.currentSong.toSongEntity(playlist.playListId)
+                val isFavorite: Boolean = libraryViewModel.isFavoriteSong(song).isNotEmpty()
+                withContext(Dispatchers.Main) {
+                    val icon =
+                        if (isFavorite) R.drawable.ic_favorite
+                        else R.drawable.ic_favorite_border
+                    songFavourite.setImageResource(icon)
+                }
+            }
+        }
     }
 
     private fun hideVolumeIfAvailable() {
@@ -251,6 +276,7 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
         updatePlayPauseDrawableState()
         updatePlayPauseDrawableState()
         updateQueue()
+        updateIsFavoriteIcon()
     }
 
     override fun onPlayStateChanged() {
@@ -269,11 +295,13 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
         super.onPlayingMetaChanged()
         updateSong()
         updateQueuePosition()
+        updateIsFavoriteIcon()
     }
 
     override fun onQueueChanged() {
         super.onQueueChanged()
         updateLabel()
+        playingQueueAdapter?.swapDataSet(MusicPlayerRemote.playingQueue)
     }
 
     private fun updateSong() {
@@ -306,7 +334,6 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
             playPauseButton.setImageResource(R.drawable.ic_play_arrow_white_64dp)
         }
     }
-
 
     private fun setUpPlayPauseFab() {
         playPauseButton.setOnClickListener(PlayPauseButtonOnClickHandler())
@@ -368,13 +395,10 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
     private fun updateLabel() {
         (MusicPlayerRemote.playingQueue.size - 1).apply {
             if (this == (MusicPlayerRemote.position)) {
-                nextSong.hide()
+                nextSong.text = "Last song"
             } else {
                 val title = MusicPlayerRemote.playingQueue[MusicPlayerRemote.position + 1].title
-                nextSong.apply {
-                    text = "Next: $title"
-                    show()
-                }
+                nextSong.text = title
             }
         }
     }
@@ -469,45 +493,11 @@ class GradientPlayerFragment : AbsPlayerFragment(R.layout.fragment_gradient_play
 
     override fun onUpdateProgressViews(progress: Int, total: Int) {
         progressSlider.max = total
-
         val animator = ObjectAnimator.ofInt(progressSlider, "progress", progress)
         animator.duration = AbsPlayerControlsFragment.SLIDER_ANIMATION_TIME
         animator.interpolator = LinearInterpolator()
         animator.start()
-
         songTotalTime.text = MusicUtil.getReadableDurationString(total.toLong())
         songCurrentProgress.text = MusicUtil.getReadableDurationString(progress.toLong())
-    }
-
-    @SuppressLint("StaticFieldLeak")
-    private fun updateFavorite() {
-        if (updateIsFavoriteTask != null) {
-            updateIsFavoriteTask?.cancel(false)
-        }
-        updateIsFavoriteTask =
-            object : AsyncTask<Song, Void, Boolean>() {
-                override fun doInBackground(vararg params: Song): Boolean? {
-                    val activity = activity
-                    return if (activity != null) {
-                        MusicUtil.isFavorite(requireActivity(), params[0])
-                    } else {
-                        cancel(false)
-                        null
-                    }
-                }
-
-                override fun onPostExecute(isFavorite: Boolean?) {
-                    val activity = activity
-                    if (activity != null) {
-                        val res = if (isFavorite!!)
-                            R.drawable.ic_favorite
-                        else
-                            R.drawable.ic_favorite_border
-
-                        val drawable = TintHelper.createTintedDrawable(activity, res, Color.WHITE)
-                        songFavourite?.setImageDrawable(drawable)
-                    }
-                }
-            }.execute(MusicPlayerRemote.currentSong)
     }
 }

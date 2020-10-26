@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2019 Hemanth Savarala.
+ * Copyright (c) 2020 Hemanth Savarla.
  *
  * Licensed under the GNU General Public License v3
  *
- * This is free software: you can redistribute it and/or modify it under
- * the terms of the GNU General Public License as published by
- *  the Free Software Foundation either version 3 of the License, or (at your option) any later version.
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
  * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
+ *
  */
-
 package code.name.monkey.retromusic.fragments.settings
 
 import android.content.SharedPreferences
@@ -33,8 +33,8 @@ class NowPlayingSettingsFragment : AbsSettingsFragment(),
         updateNowPlayingScreenSummary()
         updateAlbumCoverStyleSummary()
 
-        val carouselEffect: TwoStatePreference = findPreference("carousel_effect")!!
-        carouselEffect.setOnPreferenceChangeListener { _, newValue ->
+        val carouselEffect: TwoStatePreference? = findPreference(CAROUSEL_EFFECT)
+        carouselEffect?.setOnPreferenceChangeListener { _, newValue ->
             if (newValue as Boolean && !App.isProVersion()) {
                 showProToastAndNavigate(getString(R.string.pref_title_toggle_carousel_effect))
                 return@setOnPreferenceChangeListener false
@@ -60,7 +60,7 @@ class NowPlayingSettingsFragment : AbsSettingsFragment(),
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         PreferenceUtil.registerOnSharedPreferenceChangedListener(this)
-        val preference: Preference? = findPreference("album_cover_transform")
+        val preference: Preference? = findPreference(ALBUM_COVER_TRANSFORM)
         preference?.setOnPreferenceChangeListener { albumPrefs, newValue ->
             setSummary(albumPrefs, newValue)
             true

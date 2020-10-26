@@ -1,12 +1,29 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.adapter.song
 
 import android.view.MenuItem
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.R.menu
-import code.name.monkey.retromusic.dialogs.RemoveFromPlaylistDialog
-import code.name.monkey.retromusic.interfaces.CabHolder
+import code.name.monkey.retromusic.db.PlaylistEntity
+import code.name.monkey.retromusic.db.toSongEntity
+import code.name.monkey.retromusic.db.toSongs
+import code.name.monkey.retromusic.dialogs.RemoveSongFromPlaylistDialog
+import code.name.monkey.retromusic.interfaces.ICabHolder
 import code.name.monkey.retromusic.model.PlaylistSong
 import code.name.monkey.retromusic.model.Song
 import code.name.monkey.retromusic.util.ViewUtil
@@ -16,13 +33,17 @@ import com.h6ah4i.android.widget.advrecyclerview.draggable.ItemDraggableRange
 import com.h6ah4i.android.widget.advrecyclerview.draggable.annotation.DraggableItemStateFlags
 
 class OrderablePlaylistSongAdapter(
-    activity: AppCompatActivity,
+    private val playlist: PlaylistEntity,
+    activity: FragmentActivity,
     dataSet: ArrayList<Song>,
     itemLayoutRes: Int,
-    cabHolder: CabHolder?,
+    ICabHolder: ICabHolder?,
     private val onMoveItemListener: OnMoveItemListener?
-) : PlaylistSongAdapter(
-    activity, dataSet, itemLayoutRes, cabHolder
+) : SongAdapter(
+    activity,
+    dataSet,
+    itemLayoutRes,
+    ICabHolder
 ), DraggableItemAdapter<OrderablePlaylistSongAdapter.ViewHolder> {
 
     init {
@@ -48,11 +69,11 @@ class OrderablePlaylistSongAdapter(
         return long
     }
 
-    override fun onMultipleItemAction(menuItem: MenuItem, selection: ArrayList<Song>) {
+    override fun onMultipleItemAction(menuItem: MenuItem, selection: List<Song>) {
         when (menuItem.itemId) {
             R.id.action_remove_from_playlist -> {
-                RemoveFromPlaylistDialog.create(selection as ArrayList<PlaylistSong>)
-                    .show(activity.supportFragmentManager, "ADD_PLAYLIST")
+                RemoveSongFromPlaylistDialog.create(selection.toSongs(playlist.playListId))
+                    .show(activity.supportFragmentManager, "REMOVE_FROM_PLAYLIST")
                 return
             }
         }
@@ -91,7 +112,7 @@ class OrderablePlaylistSongAdapter(
         fun onMoveItem(fromPosition: Int, toPosition: Int)
     }
 
-    inner class ViewHolder(itemView: View) : PlaylistSongAdapter.ViewHolder(itemView),
+    inner class ViewHolder(itemView: View) : SongAdapter.ViewHolder(itemView),
         DraggableItemViewHolder {
         @DraggableItemStateFlags
         private var mDragStateFlags: Int = 0
@@ -115,7 +136,7 @@ class OrderablePlaylistSongAdapter(
         override fun onSongMenuItemClick(item: MenuItem): Boolean {
             when (item.itemId) {
                 R.id.action_remove_from_playlist -> {
-                    RemoveFromPlaylistDialog.create(song as PlaylistSong)
+                    RemoveSongFromPlaylistDialog.create(song.toSongEntity(playlist.playListId))
                         .show(activity.supportFragmentManager, "REMOVE_FROM_PLAYLIST")
                     return true
                 }
@@ -131,9 +152,5 @@ class OrderablePlaylistSongAdapter(
         override fun setDragStateFlags(@DraggableItemStateFlags flags: Int) {
             mDragStateFlags = flags
         }
-    }
-
-    companion object {
-        val TAG: String = OrderablePlaylistSongAdapter::class.java.simpleName
     }
 }

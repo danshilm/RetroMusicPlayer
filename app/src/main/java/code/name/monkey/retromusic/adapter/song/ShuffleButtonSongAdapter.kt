@@ -1,10 +1,24 @@
+/*
+ * Copyright (c) 2020 Hemanth Savarla.
+ *
+ * Licensed under the GNU General Public License v3
+ *
+ * This is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ */
 package code.name.monkey.retromusic.adapter.song
 
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import code.name.monkey.retromusic.R
 import code.name.monkey.retromusic.helper.MusicPlayerRemote
-import code.name.monkey.retromusic.interfaces.CabHolder
+import code.name.monkey.retromusic.interfaces.ICabHolder
 import code.name.monkey.retromusic.model.Song
 import com.google.android.material.button.MaterialButton
 
@@ -12,8 +26,8 @@ class ShuffleButtonSongAdapter(
     activity: AppCompatActivity,
     dataSet: MutableList<Song>,
     itemLayoutRes: Int,
-    cabHolder: CabHolder?
-) : AbsOffsetSongAdapter(activity, dataSet, itemLayoutRes, cabHolder) {
+    ICabHolder: ICabHolder?
+) : AbsOffsetSongAdapter(activity, dataSet, itemLayoutRes, ICabHolder) {
 
     override fun createViewHolder(view: View): SongAdapter.ViewHolder {
         return ViewHolder(view)
